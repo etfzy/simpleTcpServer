@@ -43,12 +43,12 @@ func (r *Tlv) read(length uint64, input *[]byte) uint64 {
 	return 0
 }
 
-func (r *Tlv) WriteFlag(out *[]byte) ([]byte, error) {
+func (r *Tlv) WriteFlag(out *[]byte) error {
 	return r.write(r.flagLen, r.flag, out)
 }
 
-func (r *Tlv) WriteLength(value uint64, bs []byte) error {
-	return r.write(r.lengthLen, value, bs)
+func (r *Tlv) WriteLength(value uint64, out *[]byte) error {
+	return r.write(r.lengthLen, value, out)
 }
 
 func (r *Tlv) ReadFlag(bs *[]byte) error {

@@ -1,11 +1,13 @@
 package simpletcp
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"net"
-	mempools "simpletcp/mempools"
-	"simpletcp/proto"
+
+	mempools "github.com/etfzy/simpleTcpServer/mempools"
+	"github.com/etfzy/simpleTcpServer/proto"
 )
 
 type ConnContext struct {
@@ -42,11 +44,20 @@ func (c *ConnContext) send(resp *[]byte) error {
 
 	//这里先清零，再使用
 	buffer := c.memps.GetContentMems(contentLen)
+	newBuffer := (*buffer)
+	newBuffer = newBuffer[:0]
 
 	//先写入flag
-	protoResp.WriteFlag(buffer)
+	err := protoResp.WriteFlag(buffer)
+	if err != nil {
+		return err
+	}
 
+	bytes.Buffer{}
 	//偏移后写入长度
-	protoResp.WriteLength(uint64(len(*resp)), buffer)
-
+	err := protoResp.WriteLength(uint64(len(*resp)), buffer)
+	if err != nil {
+		return err
+	}
+	buffer
 }

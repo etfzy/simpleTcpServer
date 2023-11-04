@@ -5,8 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	mempools "simpletcp/mempools"
-	"simpletcp/proto"
+
+	mempools "github.com/etfzy/simpleTcpServer/mempools"
+	"github.com/etfzy/simpleTcpServer/proto"
 
 	"go.uber.org/zap"
 )
