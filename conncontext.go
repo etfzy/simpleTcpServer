@@ -53,7 +53,7 @@ func (c *ConnContext) send(resp *[]byte) error {
 		return err
 	}
 
-	bytes.Buffer{}
+	bytes.Buffer
 	//偏移后写入长度
 	err := protoResp.WriteLength(uint64(len(*resp)), buffer)
 	if err != nil {
