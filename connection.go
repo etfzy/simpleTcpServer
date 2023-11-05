@@ -3,9 +3,9 @@ package simpletcp
 import (
 	"io"
 
+	mem "github.com/etfzy/mempool/base"
 	mempools "github.com/etfzy/simpleTcpServer/mempools"
 	"github.com/etfzy/simpleTcpServer/proto"
-
 	"go.uber.org/zap"
 )
 
@@ -20,7 +20,7 @@ type connection struct {
 func (cc *connection) process() {
 	defer cc.context.Conn.Close()
 	//回调处理
-	err := cc.event.onOpen(cc.context.Conn)
+	err := cc.event.onOpen(cc.context)
 	if err != nil {
 		cc.log.Error("connection close", zap.String("context", "onOpen"), zap.String("error", err.Error()))
 		cc.close()
@@ -42,12 +42,13 @@ func (cc *connection) process() {
 
 		//获取内容
 		content, err := cc.content(length)
+		defer cc.memps.PutContentMems(content)
 		if err != nil {
 			return
 		}
 
 		//回调处理
-		err = cc.event.onReact(content, cc.context)
+		err = cc.event.onReact(content.Buf(), cc.context)
 		if err != nil {
 			cc.log.Info("connection close", zap.String("context", "onReact"), zap.String("error", err.Error()))
 			cc.close()
@@ -59,10 +60,10 @@ func (cc *connection) process() {
 func (cc *connection) flag() error {
 	//flag 解析处理
 	flaglen := cc.proto.GetRecv().GetFlagLen()
-	flagByte := cc.memps.GetProtoMems(flaglen)
-	defer cc.memps.PutProtoMems(flagByte)
+	buf := cc.memps.GetProtoMems(flaglen)
+	defer cc.memps.PutProtoMems(buf)
 
-	err := cc.read(flagByte)
+	err := cc.read(buf.Buf())
 
 	if err != nil {
 		if err != io.EOF {
@@ -76,7 +77,7 @@ func (cc *connection) flag() error {
 		}
 	}
 
-	err = cc.proto.GetRecv().ReadFlag(flagByte)
+	err = cc.proto.GetRecv().ReadFlag(buf)
 	if err != nil {
 		cc.log.Error("connection close", zap.String("context", "ParseFlag"), zap.String("error", err.Error()))
 		cc.close()
@@ -89,10 +90,10 @@ func (cc *connection) flag() error {
 func (cc *connection) length() (uint64, error) {
 	//length 处理
 	lenLen := cc.proto.GetRecv().GetLengthLen()
-	lenByte := cc.memps.GetProtoMems(lenLen)
-	defer cc.memps.PutProtoMems(lenByte)
+	buf := cc.memps.GetProtoMems(lenLen)
+	defer cc.memps.PutProtoMems(buf)
 
-	err := cc.read(lenByte)
+	err := cc.read(buf.Buf())
 	if err != nil {
 		if err != io.EOF {
 			cc.log.Error("connection close", zap.String("context", "read"), zap.String("error", err.Error()))
@@ -105,7 +106,7 @@ func (cc *connection) length() (uint64, error) {
 		}
 	}
 
-	length, err := cc.proto.GetRecv().ReadLength(lenByte)
+	length, err := cc.proto.GetRecv().ReadLength(buf)
 	if err != nil {
 		cc.log.Error("connection close", zap.String("context", "ParseLength"), zap.String("error", err.Error()))
 		cc.close()
@@ -115,9 +116,9 @@ func (cc *connection) length() (uint64, error) {
 	return length, nil
 }
 
-func (cc *connection) content(length uint64) (*[]byte, error) {
+func (cc *connection) content(length uint64) (*mem.Buffer[byte], error) {
 	content := cc.memps.GetContentMems(length)
-	err := cc.read(content)
+	err := cc.read(content.Buf())
 
 	if err != nil {
 		if err != io.EOF {

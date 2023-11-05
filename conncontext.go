@@ -1,10 +1,10 @@
 package simpletcp
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"net"
+	"time"
 
 	mempools "github.com/etfzy/simpleTcpServer/mempools"
 	"github.com/etfzy/simpleTcpServer/proto"
@@ -26,7 +26,7 @@ func createConnContext(proto proto.Proto, memps mempools.MemPools, c net.Conn) *
 	}
 }
 
-func (c *ConnContext) send(resp *[]byte) error {
+func (c *ConnContext) send(resp *[]byte, timems int) error {
 	protoResp := c.proto.GetResp()
 	if protoResp == nil {
 		return errors.New("proto response config is nil, can not send data!")
@@ -44,20 +44,25 @@ func (c *ConnContext) send(resp *[]byte) error {
 
 	//这里先清零，再使用
 	buffer := c.memps.GetContentMems(contentLen)
-	newBuffer := (*buffer)
-	newBuffer = newBuffer[:0]
+	buffer.Reset()
+	defer c.memps.PutContentMems(buffer)
 
-	//先写入flag
+	//先写入flags
 	err := protoResp.WriteFlag(buffer)
 	if err != nil {
 		return err
 	}
 
-	bytes.Buffer
 	//偏移后写入长度
-	err := protoResp.WriteLength(uint64(len(*resp)), buffer)
+	err = protoResp.WriteLength(uint64(len(*resp)), buffer)
 	if err != nil {
 		return err
 	}
-	buffer
+
+	*buffer.Buf() = append(*buffer.Buf(), *resp...)
+
+	t := time.Now().Add(time.Duration(timems) * time.Millisecond)
+	c.Conn.SetWriteDeadline(t)
+	_, err = c.Conn.Write(*buffer.Buf())
+	return err
 }

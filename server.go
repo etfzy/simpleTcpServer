@@ -25,8 +25,8 @@ type SimpleConf struct {
 type TcpServer interface {
 	Start() error
 	SetLog(l *zap.Logger) TcpServer
-	SetReceive(r *proto.Tlv) TcpServer
-	SetResponse(r *proto.Tlv) TcpServer
+	NewReceive() *proto.Tlv
+	NewResponse() *proto.Tlv
 	EnableContentMemPools(scopes []uint64) TcpServer
 }
 
@@ -45,14 +45,16 @@ func (s *SimpleConf) SetLog(l *zap.Logger) TcpServer {
 	return s
 }
 
-func (s *SimpleConf) SetReceive(r *proto.Tlv) TcpServer {
+func (s *SimpleConf) NewReceive() *proto.Tlv {
+	r := proto.NewTlv()
 	s.proto.SetRecv(r)
-	return s
+	return s.proto.GetRecv()
 }
 
-func (s *SimpleConf) SetResponse(r *proto.Tlv) TcpServer {
+func (s *SimpleConf) NewResponse() *proto.Tlv {
+	r := proto.NewTlv()
 	s.proto.SetResp(r)
-	return s
+	return s.proto.GetResp()
 }
 
 // 设置返回内容的预期长度，底层buffer会根据该范围进行sync pool
@@ -100,7 +102,7 @@ func (s *SimpleConf) getProtoLen() []uint64 {
 	result = append(result, resp.GetFlagLen())
 	result = append(result, resp.GetLengthLen())
 
-	return nil
+	return result
 }
 
 func (s *SimpleConf) createConnection(conn net.Conn) *connection {
@@ -121,6 +123,7 @@ func (s *SimpleConf) Start() error {
 	}
 
 	lens := s.getProtoLen()
+
 	s.memps = mempools.CreateMems(lens, s.contentScopes)
 
 	listen, err := net.Listen(s.protocol, s.addr)

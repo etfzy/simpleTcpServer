@@ -1,12 +1,14 @@
 package mempools
 
-import mem "github.com/etfzy/mempool/base"
+import (
+	mem "github.com/etfzy/mempool/base"
+)
 
 type MemPools interface {
-	GetProtoMems(num uint64) *[]byte
-	GetContentMems(num uint64) *[]byte
-	PutProtoMems(m *[]byte)
-	PutContentMems(m *[]byte)
+	GetProtoMems(num uint64) *mem.Buffer[byte]
+	GetContentMems(num uint64) *mem.Buffer[byte]
+	PutProtoMems(m *mem.Buffer[byte])
+	PutContentMems(m *mem.Buffer[byte])
 }
 
 type memPools struct {
@@ -26,34 +28,32 @@ func CreateMems(protoLens, contentLens []uint64) MemPools {
 	return memp
 }
 
-func (mp *memPools) GetProtoMems(num uint64) *[]byte {
+func (mp *memPools) GetProtoMems(num uint64) *mem.Buffer[byte] {
 	if mp.protoMem == nil {
-		temp := make([]byte, num)
-		return &temp
+		return mem.NewBuffer[byte](int(num))
 	}
 
 	return mp.protoMem.Get(num)
 }
 
-func (mp *memPools) GetContentMems(num uint64) *[]byte {
+func (mp *memPools) GetContentMems(num uint64) *mem.Buffer[byte] {
 	if mp.contentMem == nil {
-		temp := make([]byte, num)
-		return &temp
+		return mem.NewBuffer[byte](int(num))
 	}
 
 	return mp.contentMem.Get(num)
 }
 
-func (mp *memPools) PutProtoMems(m *[]byte) {
-	if mp.protoMem == nil {
+func (mp *memPools) PutProtoMems(m *mem.Buffer[byte]) {
+	if mp.protoMem == nil || m == nil {
 		return
 	}
 	mp.protoMem.PutBack(m)
 	return
 }
 
-func (mp *memPools) PutContentMems(m *[]byte) {
-	if mp.contentMem == nil {
+func (mp *memPools) PutContentMems(m *mem.Buffer[byte]) {
+	if mp.contentMem == nil || m == nil {
 		return
 	}
 	mp.contentMem.PutBack(m)
